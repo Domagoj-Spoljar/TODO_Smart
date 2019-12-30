@@ -1,54 +1,148 @@
-    #define PIN_LED1 3
-    #define PIN_LED2 4
-    #define PIN_LED3 5
-    #define PIN_LED4 6
-    /*
-     * BLINKER CLASS DEFINITION
-     */
-    class Blinker {
-      private:
-        byte pinLED;
-        boolean ledState = LOW;
-        unsigned long timeLedOn;
-        unsigned long timeLedOff;
-        unsigned long nextChangeTime = 0;
-      public:
-        Blinker(byte pinLED, unsigned long timeLedOn, unsigned long timeLedOff) {
-          this->pinLED = pinLED;
-          this->timeLedOn = timeLedOn;
-          this->timeLedOff = timeLedOff;
-          pinMode(pinLED, OUTPUT);
-        }
-        // Checks whether it is time to turn on or off the LED.
-        void check() {
-          unsigned long currentTime = millis();
-          if(currentTime >= nextChangeTime) {
-            if(ledState) {
-              // LED is currently turned On. Turn Off LED.
-              ledState = LOW;
-              nextChangeTime = currentTime + timeLedOff;
-            }
-            else{
-              // LED is currently turned Off. Turn On LED.
-              ledState = HIGH;
-              nextChangeTime = currentTime + timeLedOn;
-            }
-            digitalWrite(pinLED, ledState);
-          }
-        }
-    };
-    /*
-     *  BLINKER CLASS VARIABLES DECLARATION
-     */
-    Blinker blink1 = Blinker(PIN_LED1, 500, 500);
-    Blinker blink2 = Blinker(PIN_LED2, 1000, 1000);
-    Blinker blink3 = Blinker(PIN_LED3, 2000, 2000);
-    Blinker blink4 = Blinker(PIN_LED4, 1000, 2000);
-    void setup() {
+
+#define LED1_PIN D1
+#define BUTTON_PIN D2
+/*
+   LED CLASS DEFINITION
+*/
+class Led {
+  private:
+    byte pinLED;
+    boolean ledState = LOW;
+  public:
+    Led(byte pinLED, boolean ledState) {
+      this->pinLED = pinLED;
+      this->ledState = ledState;
+      pinMode(pinLED, OUTPUT);
+      digitalWrite(pinLED, ledState);
     }
-    void loop() {
-      blink1.check();
-      blink2.check();
-      blink3.check();
-      blink4.check();
+
+    void turn_on() {
+      digitalWrite(pinLED, LOW);
     }
+    void turn_off() {
+      digitalWrite(pinLED, HIGH);
+    }
+};
+
+class Button
+{
+  private:
+    uint8_t _pin;          // arduino pin number connected to button
+    uint32_t _dbTime;      // debounce time (ms)
+    bool _puEnable;        // internal pullup resistor enabled
+    bool _invert;          // if true, interpret logic low as pressed, else interpret logic high as pressed
+    bool _state;           // current button state, true=pressed
+    bool _lastState;       // previous button state
+    bool _changed;         // state changed since last read
+    uint32_t _time;        // time of current state (ms from millis)
+    uint32_t _lastChange;  // time of last state change (ms)
+
+  public:
+    // Button(pin, dbTime, puEnable, invert) instantiates a button object.
+    //
+    // Required parameter:
+    // pin      The Arduino pin the button is connected to
+    //
+    // Optional parameters:
+    // dbTime   Debounce time in milliseconds (default 25ms)
+    // puEnable true to enable the AVR internal pullup resistor (default false)
+    // invert   true to interpret a low logic level as pressed (default true)
+    Button(uint8_t pin, uint32_t dbTime = 25, uint8_t puEnable = false, uint8_t invert = true)
+      : _pin(pin), _dbTime(dbTime), _puEnable(puEnable), _invert(invert)
+    {
+      pinMode(_pin, _puEnable ? INPUT_PULLUP : INPUT);
+      _state = digitalRead(_pin);
+      if (_invert) _state = !_state;
+      _time = millis();
+      _lastState = _state;
+      _changed = false;
+      _lastChange = _time;
+
+    }
+
+    // Returns the current debounced button state, true for pressed,
+    // false for released. Call this function frequently to ensure
+    // the sketch is responsive to user input.
+    bool read()
+    {
+      uint32_t ms = millis();
+      bool pinVal = digitalRead(_pin);
+      if (_invert) pinVal = !pinVal;
+      if (ms - _lastChange < _dbTime)
+      {
+        _changed = false;
+      }
+      else
+      {
+        _lastState = _state;
+        _state = pinVal;
+        _changed = (_state != _lastState);
+        if (_changed) _lastChange = ms;
+      }
+      _time = ms;
+      return _state;
+    }
+    // Returns true if the button state was pressed at the last call to read().
+    // Does not cause the button to be read.
+    bool isPressed()
+    {
+      return _state;
+    }
+    // Returns true if the button state was released at the last call to read().
+    // Does not cause the button to be read.
+    bool isReleased()
+    {
+      return !_state;
+    }
+    // Returns true if the button state at the last call to read() was pressed,
+    // and this was a change since the previous read.
+    bool wasPressed()
+    {
+      return _state && _changed;
+    }
+    // Returns true if the button state at the last call to read() was released,
+    // and this was a change since the previous read.
+    bool wasReleased()
+    {
+      return !_state && _changed;
+    }
+    // Returns true if the button state at the last call to read() was pressed,
+    // and has been in that state for at least the given number of milliseconds.
+    bool pressedFor(uint32_t ms)
+    {
+      return _state && _time - _lastChange >= ms;
+    }
+    // Returns true if the button state at the last call to read() was released,
+    // and has been in that state for at least the given number of milliseconds.
+    bool releasedFor(uint32_t ms)
+    {
+      return !_state && _time - _lastChange >= ms;
+    }
+    // Returns the time in milliseconds (from millis) that the button last
+    // changed state.
+    uint32_t lastChange()
+    {
+      return _lastChange;
+    }
+
+};
+
+/*
+    BLINKER CLASS VARIABLES DECLARATION
+*/
+Led led1 = Led(LED1_PIN, LOW);
+Button button1 = Button(BUTTON_PIN);
+void setup() {
+}
+void loop() {
+  button1.read();
+  if (button1.isPressed())
+  {
+    led1.turn_on();
+  }
+  else {
+    led1.turn_off();
+  }
+  delay(2);
+
+}
