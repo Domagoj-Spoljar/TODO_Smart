@@ -127,13 +127,17 @@ class Button
 
 };
 
-/*
-    BLINKER CLASS VARIABLES DECLARATION
-*/
+/******CLASS VARIABLES DECLARATION*******/
+
 Led led1 = Led(LED1_PIN, LOW);
 Button button1 = Button(BUTTON_PIN);
+
+/*****************SETUP*******************/
 void setup() {
+  
 }
+
+/*****************LOOP********************/
 void loop() {
   button1.read();
   if (button1.isPressed())
